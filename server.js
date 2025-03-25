@@ -15,7 +15,6 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.set('view engine', 'ejs');
 app.use(express.static('public'));
 
-// Routes
 app.get('/', async (req, res) => {
   const employees = await Employee.find();
   res.render('index', { employees });
@@ -32,4 +31,4 @@ app.post('/delete/:id', async (req, res) => {
   res.redirect('/');
 });
 
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
