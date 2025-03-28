@@ -1,137 +1,88 @@
-require('dotenv').config();
-
-const express = require('express');
-const mongoose = require('mongoose');
-const bodyParser = require('body-parser');
-const multer = require('multer');
-const path = require('path');
-const bcrypt = require('bcryptjs');
-const session = require('express-session');
-const Employee = require('./models/Employee');
+const express = require("express");
+const mongoose = require("mongoose");
+const bodyParser = require("body-parser");
+const multer = require("multer");
+const path = require("path");
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+
+// Database Connection
+mongoose.connect("mongodb://127.0.0.1:27017/employeeDB", {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+}).then(() => console.log("MongoDB Connected")).catch(err => console.log(err));
+
+// Employee Schema
+const employeeSchema = new mongoose.Schema({
+    name: String,
+    email: String,
+    position: String,
+    salary: Number,
+    jobLocation: String,
+    phoneNumber: String,
+    joiningDate: String,
+    profilePicture: String
+});
+
+const Employee = mongoose.model("Employee", employeeSchema);
 
 // Middleware
+app.set("view engine", "ejs");
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.static('public'));
-app.set('view engine', 'ejs');
+app.use(express.static("public"));
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// Session Middleware
-app.use(session({
-    secret: 'mysecretkey',
-    resave: false,
-    saveUninitialized: true,
-    cookie: { secure: false }
-}));
-
-// Set Storage for Profile Pictures
+// Multer Storage for Profile Picture Upload
 const storage = multer.diskStorage({
-    destination: './public/uploads/',
-    filename: (req, file, cb) => {
-        cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname));
-    }
-});
-const upload = multer({ storage });
-
-// Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-}).then(() => console.log("MongoDB Connected"))
-  .catch(err => console.log(err));
-
-// Admin Credentials
-const ADMIN_EMAIL = "admin@gmail.com";
-const ADMIN_PASSWORD = bcrypt.hashSync("password", 10);
-
-// Authentication Middleware
-const requireAuth = (req, res, next) => {
-    if (!req.session.user) {
-        return res.redirect('/login');
-    }
-    next();
-};
-
-// Login Page
-app.get('/login', (req, res) => {
-    res.render('login', { message: "" });
-});
-
-// Handle Login
-app.post('/login', (req, res) => {
-    const { email, password } = req.body;
-    if (email === ADMIN_EMAIL && bcrypt.compareSync(password, ADMIN_PASSWORD)) {
-        req.session.user = email;
-        return res.redirect('/');
-    } else {
-        return res.render('login', { message: "Invalid email or password!" });
+    destination: "./uploads/",
+    filename: function (req, file, cb) {
+        cb(null, file.fieldname + "-" + Date.now() + path.extname(file.originalname));
     }
 });
 
-// Logout
-app.get('/logout', (req, res) => {
-    req.session.destroy(() => {
-        res.redirect('/login');
-    });
-});
+const upload = multer({ storage: storage });
 
-// Home Page - List Employees
-app.get('/', requireAuth, async (req, res) => {
+// Home Route
+app.get("/", async (req, res) => {
     const employees = await Employee.find();
-    res.render('index', { employees });
+    res.render("index", { employees });
 });
 
-// Add Employee
-app.post('/add', requireAuth, upload.single('profilePicture'), async (req, res) => {
+// Show Edit Page
+app.get("/edit/:id", async (req, res) => {
     try {
-        const newEmployee = new Employee({
+        const employee = await Employee.findById(req.params.id);
+        if (!employee) return res.status(404).send("Employee not found");
+        res.render("edit", { employee });
+    } catch (err) {
+        res.status(500).send("Error loading employee");
+    }
+});
+
+// ✅ FIXED: Update Employee Data Route
+app.post("/update/:id", upload.single("profilePicture"), async (req, res) => {
+    try {
+        const employee = await Employee.findById(req.params.id);
+        if (!employee) return res.status(404).send("Employee not found");
+
+        // Prepare updated data
+        const updatedData = {
             name: req.body.name,
             email: req.body.email,
             position: req.body.position,
-            profilePicture: req.file ? req.file.filename : "default.png",
             salary: req.body.salary,
             jobLocation: req.body.jobLocation,
             phoneNumber: req.body.phoneNumber,
-            joiningDate: req.body.joiningDate
-        });
+            joiningDate: req.body.joiningDate,
+            profilePicture: req.file ? req.file.filename : employee.profilePicture // Keep old image if no new one uploaded
+        };
 
-        await newEmployee.save();
-        res.redirect('/');
+        await Employee.findByIdAndUpdate(req.params.id, updatedData);
+        res.redirect("/");
     } catch (error) {
-        res.status(500).send("Error adding employee");
-    }
-});
-
-// Edit Employee
-app.get('/edit/:id', requireAuth, async (req, res) => {
-    const employee = await Employee.findById(req.params.id);
-    res.render('edit', { employee });
-});
-
-app.post('/edit/:id', requireAuth, async (req, res) => {
-    await Employee.findByIdAndUpdate(req.params.id, req.body);
-    res.redirect('/');
-});
-
-// Delete Employee
-app.get('/delete/:id', requireAuth, async (req, res) => {
-    await Employee.findByIdAndDelete(req.params.id);
-    res.redirect('/');
-});
-
-// Show Profile Page
-app.get('/profile/:id', requireAuth, async (req, res) => {
-    try {
-        const employee = await Employee.findById(req.params.id);
-        if (!employee) {
-            return res.status(404).send("Employee not found");
-        }
-        res.render('profile', { employee });
-    } catch (error) {
-        res.status(500).send("Internal Server Error");
+        res.status(500).send("Error updating employee");
     }
 });
 
 // Start Server
-app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+app.listen(3000, () => console.log("Server started on http://localhost:3000"));
