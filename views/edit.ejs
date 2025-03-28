@@ -1,13 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Employee</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
 </head>
 <body class="container mt-4">
     <h2 class="text-center text-primary">Edit Employee</h2>
 
-    <form action="/update/<%= employee._id %>" method="POST" class="mt-4 p-3 border rounded shadow-sm">
+    <form action="/update/<%= employee._id %>" method="POST" enctype="multipart/form-data" class="mt-4 p-3 border rounded shadow-sm">
+        
+        <!-- Show Current Profile Picture -->
+        <div class="text-center">
+            <img src="/uploads/<%= employee.profilePicture %>" alt="Profile Picture" class="rounded-circle mb-3" width="150" height="150">
+        </div>
+
+        <label class="form-label">Update Profile Picture:</label>
+        <input type="file" class="form-control mb-3" name="profilePicture">
+
+        <label class="form-label">Full Name:</label>
         <input type="text" class="form-control mb-2" name="name" value="<%= employee.name %>" required>
+
+        <label class="form-label">Email:</label>
         <input type="email" class="form-control mb-2" name="email" value="<%= employee.email %>" required>
+
+        <label class="form-label">Position:</label>
         <input type="text" class="form-control mb-2" name="position" value="<%= employee.position %>" required>
-        <button type="submit" class="btn btn-primary">Update</button>
+
+        <label class="form-label">Salary:</label>
+        <input type="number" class="form-control mb-2" name="salary" value="<%= employee.salary %>" required>
+
+        <label class="form-label">Job Location:</label>
+        <input type="text" class="form-control mb-2" name="jobLocation" value="<%= employee.jobLocation %>" required>
+
+        <label class="form-label">Phone Number:</label>
+        <input type="text" class="form-control mb-2" name="phoneNumber" value="<%= employee.phoneNumber %>" required>
+
+        <label class="form-label">Joining Date:</label>
+        <input type="date" class="form-control mb-2" name="joiningDate" value="<%= employee.joiningDate %>" required>
+
+        <button type="submit" class="btn btn-primary w-100">Update Employee</button>
     </form>
+
+    <div class="text-center mt-3">
+        <a href="/" class="btn btn-secondary">Back to Home</a>
+    </div>
 </body>
+</html>
