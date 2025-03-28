@@ -1,76 +1,103 @@
-const express = require('express');
-const mongoose = require('mongoose');
-const bodyParser = require('body-parser');
-const session = require('express-session');
-const Employee = require('./models/Employee');
+const express = require("express");
+const multer = require("multer");
+const path = require("path");
+const mongoose = require("mongoose");
 
 const app = express();
-const PORT = 3000;
 
 // Connect to MongoDB
-mongoose.connect('mongodb://localhost:27017/employees', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-}).then(() => console.log('MongoDB Connected'));
+mongoose.connect("mongodb://127.0.0.1:27017/employeeDB", {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+});
+
+// Define Employee Schema
+const employeeSchema = new mongoose.Schema({
+    name: String,
+    email: String,
+    position: String,
+    profilePicture: String
+});
+
+const Employee = mongoose.model("Employee", employeeSchema);
 
 // Middleware
-app.use(bodyParser.urlencoded({ extended: true }));
-app.set('view engine', 'ejs');
-app.use(express.static('public'));
-app.use(session({ secret: 'secret', resave: false, saveUninitialized: true }));
+app.set("view engine", "ejs");
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static("public"));
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// Dummy Admin Login (Hardcoded)
-const ADMIN = { email: "admin@example.com", password: "admin123" };
-
-// Middleware to Check Login
-function checkAuth(req, res, next) {
-  if (req.session.user) return next();
-  res.redirect('/login');
-}
-
-// Login Page
-app.get('/login', (req, res) => res.render('login', { message: "" }));
-app.post('/login', (req, res) => {
-  const { email, password } = req.body;
-  if (email === ADMIN.email && password === ADMIN.password) {
-    req.session.user = email;
-    return res.redirect('/');
-  }
-  res.render('login', { message: "Invalid credentials" });
+// Multer Configuration (For File Upload)
+const storage = multer.diskStorage({
+    destination: "./uploads/",
+    filename: (req, file, cb) => {
+        cb(null, Date.now() + path.extname(file.originalname));
+    }
 });
 
-app.get('/logout', (req, res) => {
-  req.session.destroy();
-  res.redirect('/login');
+const upload = multer({ storage: storage });
+
+// Home Route - Fetch All Employees
+app.get("/", async (req, res) => {
+    try {
+        const employees = await Employee.find();
+        console.log("Fetched Employees:", employees);  // Debugging Line
+        res.render("index", { employees });
+    } catch (error) {
+        console.error("Error fetching employees:", error);
+        res.status(500).send("Error fetching employees");
+    }
 });
 
-app.get('/', checkAuth, async (req, res) => {
-  const employees = await Employee.find();
-  res.render('index', { employees });
+// Add Employee with Profile Picture
+app.post("/add", upload.single("profilePicture"), async (req, res) => {
+    try {
+        const { name, email, position } = req.body;
+        const profilePicture = req.file ? req.file.filename : "default.png";
+
+        const newEmployee = new Employee({ name, email, position, profilePicture });
+        await newEmployee.save();
+
+        res.redirect("/");
+    } catch (error) {
+        console.error("Error adding employee:", error);
+        res.status(500).send("Error adding employee");
+    }
 });
 
-
-app.post('/add', checkAuth, async (req, res) => {
-  await Employee.create(req.body);
-  res.redirect('/');
+// Show Employee Profile
+app.get("/profile/:id", async (req, res) => {
+    try {
+        const employee = await Employee.findById(req.params.id);
+        res.render("profile", { employee });
+    } catch (error) {
+        console.error("Error fetching profile:", error);
+        res.status(500).send("Error fetching profile");
+    }
 });
 
-app.get('/edit/:id', checkAuth, async (req, res) => {
-  const employee = await Employee.findById(req.params.id);
-  res.render('edit', { employee });
-});
-
-// Update Employee
-app.post('/update/:id', checkAuth, async (req, res) => {
-  await Employee.findByIdAndUpdate(req.params.id, req.body);
-  res.redirect('/');
+// Edit Employee
+app.get("/edit/:id", async (req, res) => {
+    try {
+        const employee = await Employee.findById(req.params.id);
+        res.render("edit", { employee });
+    } catch (error) {
+        console.error("Error fetching employee for edit:", error);
+        res.status(500).send("Error fetching employee for edit");
+    }
 });
 
 // Delete Employee
-app.post('/delete/:id', checkAuth, async (req, res) => {
-  await Employee.findByIdAndDelete(req.params.id);
-  res.redirect('/');
+app.post("/delete/:id", async (req, res) => {
+    try {
+        await Employee.findByIdAndDelete(req.params.id);
+        res.redirect("/");
+    } catch (error) {
+        console.error("Error deleting employee:", error);
+        res.status(500).send("Error deleting employee");
+    }
 });
 
 // Start Server
+const PORT = 3000;
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
