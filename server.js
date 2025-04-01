@@ -3,9 +3,17 @@ const mongoose = require("mongoose");
 const bodyParser = require("body-parser");
 const multer = require("multer");
 const path = require("path");
+const session = require("express-session");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// ✅ Session Setup
+app.use(session({
+    secret: "your-secret-key",
+    resave: false,
+    saveUninitialized: true
+}));
 
 // ✅ Database Connection
 mongoose.connect("mongodb://127.0.0.1:27017/employeeDB", {
@@ -44,8 +52,46 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
-// ✅ Home Route - Display Employee List
-app.get("/", async (req, res) => {
+// ✅ Middleware to Protect Routes
+function checkAuth(req, res, next) {
+    if (!req.session.user) {
+        return res.redirect("/login");
+    }
+    next();
+}
+
+// ✅ Login Page Route
+app.get("/login", (req, res) => {
+    res.render("login", { message: "" });
+});
+
+// ✅ Handle Login Authentication
+app.post("/login", (req, res) => {
+    const { email, password } = req.body;
+
+    // Replace this with actual database authentication
+    if (email === "admin@example.com" && password === "password") {
+        req.session.user = email; // Store user session
+        res.redirect("/dashboard");
+    } else {
+        res.render("login", { message: "Invalid email or password" });
+    }
+});
+
+// ✅ Logout Route
+app.get("/logout", (req, res) => {
+    req.session.destroy((err) => {
+        if (err) {
+            console.log(err);
+            res.redirect("/dashboard");
+        } else {
+            res.redirect("/login");
+        }
+    });
+});
+
+// ✅ Dashboard (Main Page - Protected)
+app.get("/dashboard", checkAuth, async (req, res) => {
     try {
         const employees = await Employee.find();
         res.render("index", { employees });
@@ -54,8 +100,8 @@ app.get("/", async (req, res) => {
     }
 });
 
-// ✅ Add New Employee Route
-app.post("/add", upload.single("profilePicture"), async (req, res) => {
+// ✅ Add Employee (Protected)
+app.post("/add", checkAuth, upload.single("profilePicture"), async (req, res) => {
     try {
         const newEmployee = new Employee({
             name: req.body.name,
@@ -69,14 +115,14 @@ app.post("/add", upload.single("profilePicture"), async (req, res) => {
         });
 
         await newEmployee.save();
-        res.redirect("/");
+        res.redirect("/dashboard");
     } catch (error) {
         res.status(500).send("❌ Error adding employee");
     }
 });
 
-// ✅ Show Profile Page
-app.get("/profile/:id", async (req, res) => {
+// ✅ Profile Page (Protected)
+app.get("/profile/:id", checkAuth, async (req, res) => {
     try {
         const employee = await Employee.findById(req.params.id);
         if (!employee) return res.status(404).send("❌ Employee not found");
@@ -87,8 +133,8 @@ app.get("/profile/:id", async (req, res) => {
     }
 });
 
-// ✅ Edit Employee Page
-app.get("/edit/:id", async (req, res) => {
+// ✅ Edit Employee Page (Protected)
+app.get("/edit/:id", checkAuth, async (req, res) => {
     try {
         const employee = await Employee.findById(req.params.id);
         if (!employee) return res.status(404).send("❌ Employee not found");
@@ -99,8 +145,8 @@ app.get("/edit/:id", async (req, res) => {
     }
 });
 
-// ✅ Update Employee Data
-app.post("/update/:id", upload.single("profilePicture"), async (req, res) => {
+// ✅ Update Employee Data (Protected)
+app.post("/update/:id", checkAuth, upload.single("profilePicture"), async (req, res) => {
     try {
         const employee = await Employee.findById(req.params.id);
         if (!employee) return res.status(404).send("❌ Employee not found");
@@ -114,21 +160,21 @@ app.post("/update/:id", upload.single("profilePicture"), async (req, res) => {
             jobLocation: req.body.jobLocation,
             phoneNumber: req.body.phoneNumber,
             joiningDate: req.body.joiningDate,
-            profilePicture: req.file ? req.file.filename : employee.profilePicture // Keep old image if no new one uploaded
+            profilePicture: req.file ? req.file.filename : employee.profilePicture
         };
 
         await Employee.findByIdAndUpdate(req.params.id, updatedData);
-        res.redirect("/");
+        res.redirect("/dashboard");
     } catch (error) {
         res.status(500).send("❌ Error updating employee");
     }
 });
 
-// ✅ Delete Employee
-app.get("/delete/:id", async (req, res) => {
+// ✅ Delete Employee (Protected)
+app.get("/delete/:id", checkAuth, async (req, res) => {
     try {
         await Employee.findByIdAndDelete(req.params.id);
-        res.redirect("/");
+        res.redirect("/dashboard");
     } catch (error) {
         res.status(500).send("❌ Error deleting employee");
     }
