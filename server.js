@@ -30,7 +30,7 @@ const employeeSchema = new mongoose.Schema({
     salary: Number,
     jobLocation: String,
     phoneNumber: String,
-    joiningDate: String,
+    birthDate: String,
     profilePicture: String
 });
 
@@ -110,12 +110,12 @@ app.post("/add", checkAuth, upload.single("profilePicture"), async (req, res) =>
             salary: req.body.salary,
             jobLocation: req.body.jobLocation,
             phoneNumber: req.body.phoneNumber,
-            joiningDate: req.body.joiningDate,
+            birthDate: req.body.birthDate,
             profilePicture: req.file ? req.file.filename : "default.png"
         });
 
         await newEmployee.save();
-        res.redirect("/dashboard");
+        res.redirect("dashboard");
     } catch (error) {
         res.status(500).send("❌ Error adding employee");
     }
@@ -159,7 +159,7 @@ app.post("/update/:id", checkAuth, upload.single("profilePicture"), async (req, 
             salary: req.body.salary,
             jobLocation: req.body.jobLocation,
             phoneNumber: req.body.phoneNumber,
-            joiningDate: req.body.joiningDate,
+            birthDate: req.body.birthDate,
             profilePicture: req.file ? req.file.filename : employee.profilePicture
         };
 
