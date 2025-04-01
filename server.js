@@ -179,6 +179,10 @@ app.get("/delete/:id", checkAuth, async (req, res) => {
         res.status(500).send("❌ Error deleting employee");
     }
 });
+// Redirect root URL ("/") to login page
+app.get("/", (req, res) => {
+    res.redirect("/login");
+});
 
 // ✅ Start Server
 app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`));
