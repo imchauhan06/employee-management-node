@@ -8,21 +8,21 @@ const session = require("express-session");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ✅ Session Setup
+//  Session Setup
 app.use(session({
     secret: "your-secret-key",
     resave: false,
     saveUninitialized: true
 }));
 
-// ✅ Database Connection
+//  Database Connection
 mongoose.connect("mongodb://127.0.0.1:27017/employeeDB", {
     useNewUrlParser: true,
     useUnifiedTopology: true,
 }).then(() => console.log("✅ MongoDB Connected"))
   .catch(err => console.error("❌ MongoDB Connection Error:", err));
 
-// ✅ Employee Schema
+//  Employee Schema
 const employeeSchema = new mongoose.Schema({
     name: String,
     email: String,
@@ -36,13 +36,13 @@ const employeeSchema = new mongoose.Schema({
 
 const Employee = mongoose.model("Employee", employeeSchema);
 
-// ✅ Middleware
+//  Middleware
 app.set("view engine", "ejs");
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static("public"));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// ✅ Multer Storage for Profile Picture Upload
+//  Multer Storage for Profile Picture Upload
 const storage = multer.diskStorage({
     destination: "./uploads/",
     filename: function (req, file, cb) {
@@ -52,7 +52,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
-// ✅ Middleware to Protect Routes
+//  Middleware to Protect Routes
 function checkAuth(req, res, next) {
     if (!req.session.user) {
         return res.redirect("/login");
@@ -60,12 +60,12 @@ function checkAuth(req, res, next) {
     next();
 }
 
-// ✅ Login Page Route
+//  Login Page Route
 app.get("/login", (req, res) => {
     res.render("login", { message: "" });
 });
 
-// ✅ Handle Login Authentication
+//  Handle Login Authentication
 app.post("/login", (req, res) => {
     const { email, password } = req.body;
 
@@ -78,7 +78,7 @@ app.post("/login", (req, res) => {
     }
 });
 
-// ✅ Logout Route
+//  Logout Route
 app.get("/logout", (req, res) => {
     req.session.destroy((err) => {
         if (err) {
@@ -90,7 +90,7 @@ app.get("/logout", (req, res) => {
     });
 });
 
-// ✅ Dashboard (Main Page - Protected)
+//  Dashboard (Main Page - Protected)
 app.get("/dashboard", checkAuth, async (req, res) => {
     try {
         const employees = await Employee.find();
@@ -100,7 +100,7 @@ app.get("/dashboard", checkAuth, async (req, res) => {
     }
 });
 
-// ✅ Add Employee (Protected)
+//  Add Employee (Protected)
 app.post("/add", checkAuth, upload.single("profilePicture"), async (req, res) => {
     try {
         const newEmployee = new Employee({
@@ -121,7 +121,7 @@ app.post("/add", checkAuth, upload.single("profilePicture"), async (req, res) =>
     }
 });
 
-// ✅ Profile Page (Protected)
+//  Profile Page (Protected)
 app.get("/profile/:id", checkAuth, async (req, res) => {
     try {
         const employee = await Employee.findById(req.params.id);
@@ -133,7 +133,7 @@ app.get("/profile/:id", checkAuth, async (req, res) => {
     }
 });
 
-// ✅ Edit Employee Page (Protected)
+//  Edit Employee Page (Protected)
 app.get("/edit/:id", checkAuth, async (req, res) => {
     try {
         const employee = await Employee.findById(req.params.id);
@@ -145,7 +145,7 @@ app.get("/edit/:id", checkAuth, async (req, res) => {
     }
 });
 
-// ✅ Update Employee Data (Protected)
+//  Update Employee Data (Protected)
 app.post("/update/:id", checkAuth, upload.single("profilePicture"), async (req, res) => {
     try {
         const employee = await Employee.findById(req.params.id);
@@ -170,7 +170,7 @@ app.post("/update/:id", checkAuth, upload.single("profilePicture"), async (req, 
     }
 });
 
-// ✅ Delete Employee (Protected)
+//  Delete Employee (Protected)
 app.get("/delete/:id", checkAuth, async (req, res) => {
     try {
         await Employee.findByIdAndDelete(req.params.id);
@@ -184,5 +184,5 @@ app.get("/", (req, res) => {
     res.redirect("/login");
 });
 
-// ✅ Start Server
+//  Start Server
 app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`));
